@@ -1,12 +1,28 @@
 #!/bin/bash
 
-# Write about the arguments that the script takes here
+# Usage
 #
-# --user Google account email address
-# --pass Google account password
-# --dest Phone number where to send message
-# --sms String to send as message
+# -u Google account email address - example mygvoicebashuser@gmail.com
+# -p Google account password - example mygvoicepass123
+# -n Phone number where to send message - example 6170000000
+# -m String to send as message, between quotes - example "Hello World"
 
+if [ "$1" == "help" ] || [ "$1" == "--help" ] || [ "$1" == "-h" ]
+then
+  echo
+  echo "Usage:"
+  echo
+  echo "  -u USERNAME - example -u yourgoogleaccount@gmail.com"
+  echo "  -p PASSWORD - example -p yourgooglepassword"
+  echo "  -n NNUMBER - example -n destinationnumber"
+  echo "  -m MESSAGE (between quotes) - example -m \"Your message between double quotes\""
+  echo
+  echo "gvoicebash -u username@gmail.com -p pass -n 617000000 -m \"Hello World\""
+  echo
+  exit 0
+fi
+
+# Process and assign opts values to variables
 while getopts u:p:n:m: option
 do
   case "${option}"
@@ -33,6 +49,7 @@ GOOGLE_SMS="https://www.google.com/voice/m/sendsms"
 # Supporting functions #
 ########################
 
+# Get auth token from Google
 function getLoginAuth() {
   local TOKEN=$(curl --data "accountType=GOOGLE&Email=$1&Passwd=$2&service=grandcentral&source=gvoice.sh" $GOOGLE_LOGIN 2>&1)
   for i in $(echo $TOKEN | tr " " "\n" 2>&1)
@@ -74,5 +91,5 @@ if [[ "$RESULT" == *Text\ sent\ to* ]]
 then
   echo "Message sent successfully"
 else
-  echo "ERROR: Message was not sent"
+  echo "ERROR: Message was not sent. Type --help for usage."
 fi

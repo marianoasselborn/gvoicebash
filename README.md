@@ -22,5 +22,6 @@ Next steps:
 ===========
 - Changing the way the script takes the password so it's not necessary to pass it as an argument (use a password prompt instead).
 - Make the script be able to read a user config file located under /home/user so the script can be called automatically without having to leave the password visible (ex. when using cron).
+- Test for getopts values and exit if something funky is entered. Right now this is very loose.
 
 If you have some ideas, open an issue to share them!
