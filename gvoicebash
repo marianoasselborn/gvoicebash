@@ -1,0 +1,78 @@
+#!/bin/bash
+
+# Write about the arguments that the script takes here
+#
+# --user Google account email address
+# --pass Google account password
+# --dest Phone number where to send message
+# --sms String to send as message
+
+while getopts u:p:n:m: option
+do
+  case "${option}"
+  in
+    u) USER=${OPTARG};;
+    p) PASS=${OPTARG};;
+    n) DESTINATION_NUMBER=${OPTARG};;
+    m) MESSAGE=$OPTARG;;
+  esac
+done
+
+# Write test for arguments here
+
+####################
+# Global variables #
+####################
+
+GOOGLE_LOGIN="https://www.google.com/accounts/ClientLogin"
+GOOGLE_INBOX="https://www.google.com/voice/m/"
+GOOGLE_SMS="https://www.google.com/voice/m/sendsms"
+
+
+########################
+# Supporting functions #
+########################
+
+function getLoginAuth() {
+  local TOKEN=$(curl --data "accountType=GOOGLE&Email=$1&Passwd=$2&service=grandcentral&source=gvoice.sh" $GOOGLE_LOGIN 2>&1)
+  for i in $(echo $TOKEN | tr " " "\n" 2>&1)
+  do
+    if [[ "$i" == *Auth=* ]]
+    then
+      local TOKEN_VALUE=$(echo $i | sed s/Auth=//)
+    fi
+  done
+  echo $TOKEN_VALUE
+}
+
+function get_rnr_se() {
+  local TOKEN=$(getLoginAuth $1 $2)
+  local RNR=$(curl --header "Authorization: GoogleLogin auth=$TOKEN" $GOOGLE_INBOX 2>&1)
+  RNR_VALUE="${RNR##*_rnr_se\"\ value=\"}"
+  RNR_VALUE="${RNR_VALUE%name=\"number\"*}"
+  RNR_VALUE="${RNR_VALUE%\"/>*}"
+  echo $RNR_VALUE
+}
+
+function sms() {
+  local RNR_ENC=$(echo -n $(get_rnr_se $1 $2) | perl -pe's/([^-_.~A-Za-z0-9])/sprintf("%%%02X", ord($1))/seg')
+  local NUMBER_ENC=$(echo -n "$3" | perl -pe's/([^-_.~A-Za-z0-9])/sprintf("%%%02X", ord($1))/seg')
+  local MESS_ENC=$(echo -n "$4" | perl -pe's/([^-_.~A-Za-z0-9])/sprintf("%%%02X", ord($1))/seg')
+  local TOKEN=$(getLoginAuth $1 $2)
+  local RESULT=$(curl -v --header "Authorization: GoogleLogin auth=$TOKEN" --data "id=&c=&number=$NUMBER_ENC&smstext=$MESS_ENC&_rnr_se=$RNR_ENC" $GOOGLE_SMS 2>&1)
+
+  echo $RESULT
+}
+
+####################
+# CONTROLLING CODE #
+####################
+
+RESULT=$(sms $USER $PASS $DESTINATION_NUMBER "$MESSAGE")
+
+if [[ "$RESULT" == *Text\ sent\ to* ]]
+then
+  echo "Message sent successfully"
+else
+  echo "ERROR: Message was not sent"
+fi
